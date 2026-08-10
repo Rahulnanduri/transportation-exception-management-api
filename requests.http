@@ -1,0 +1,104 @@
+@baseUrl = http://localhost:5234
+@caseId = 37
+
+### Health
+GET {{baseUrl}}/health
+Accept: application/json
+
+### OpenAPI document (Development only)
+GET {{baseUrl}}/swagger/v1/swagger.json
+Accept: application/json
+
+### List cases
+GET {{baseUrl}}/api/cases?page=1&pageSize=10&sortBy=CreatedAtUtc&sortDirection=Desc
+Accept: application/json
+
+### Filter cases
+GET {{baseUrl}}/api/cases?status=InProgress&severity=High&exceptionType=DeliveryRisk&assignee=Analyst-A&origin=NODE-A&page=1&pageSize=20&sortBy=DueAtUtc&sortDirection=Asc
+Accept: application/json
+
+### Get one case
+GET {{baseUrl}}/api/cases/1
+Accept: application/json
+
+### Create a synthetic manual case
+# Use a unique caseReference when repeating this request. After creation, set
+# @caseId above to the integer id returned by this response before running the
+# assignment, status, and note requests below.
+POST {{baseUrl}}/api/cases
+Content-Type: application/json
+Accept: application/json
+
+{
+  "caseReference": "CASE-DEMO-1001",
+  "movementReference": "MOV-DEMO-1001",
+  "originNode": "NODE-A",
+  "destinationNode": "DC-EAST",
+  "carrierCode": "CARRIER-04",
+  "exceptionType": "RouteDisruption",
+  "severity": "High",
+  "description": "Synthetic route disruption created for API demonstration."
+}
+
+### Assign the created case
+PATCH {{baseUrl}}/api/cases/{{caseId}}/assignment
+Content-Type: application/json
+Accept: application/json
+
+{
+  "assignee": "Analyst-D"
+}
+
+### Move the assigned case into active work
+PATCH {{baseUrl}}/api/cases/{{caseId}}/status
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "InProgress"
+}
+
+### Add a synthetic note
+POST {{baseUrl}}/api/cases/{{caseId}}/notes
+Content-Type: application/json
+Accept: application/json
+
+{
+  "author": "Analyst-D",
+  "text": "Synthetic follow-up note for the portfolio example."
+}
+
+### Resolve the case
+PATCH {{baseUrl}}/api/cases/{{caseId}}/status
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "Resolved",
+  "resolutionSummary": "Synthetic rerouting example completed."
+}
+
+### Close the resolved case
+PATCH {{baseUrl}}/api/cases/{{caseId}}/status
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "Closed"
+}
+
+### Summary report
+GET {{baseUrl}}/api/reports/summary
+Accept: application/json
+
+### SLA report
+GET {{baseUrl}}/api/reports/sla
+Accept: application/json
+
+### Export all cases as CSV
+GET {{baseUrl}}/api/cases/export.csv
+Accept: text/csv
+
+### Export a filtered CSV subset
+GET {{baseUrl}}/api/cases/export.csv?status=InProgress&severity=High
+Accept: text/csv

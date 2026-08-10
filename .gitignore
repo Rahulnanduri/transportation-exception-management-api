@@ -1,0 +1,33 @@
+# Build output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# IDE and editor state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Local databases and SQLite sidecars
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite-journal
+*.sqlite3
+*.sqlite3-journal
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Logs and operating-system files
+*.log
+.DS_Store
+Thumbs.db
