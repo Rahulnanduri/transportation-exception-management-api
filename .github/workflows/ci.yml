@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-smoke:
+    name: Build, test, and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore TransportationExceptionManagement.sln
+
+      - name: Verify formatting
+        run: dotnet format TransportationExceptionManagement.sln --verify-no-changes --no-restore
+
+      - name: Build Release
+        run: dotnet build TransportationExceptionManagement.sln --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test TransportationExceptionManagement.sln --configuration Release --no-build --logger "console;verbosity=normal"
+
+      - name: Smoke test running API
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export ASPNETCORE_ENVIRONMENT=Development
+          export ASPNETCORE_URLS=http://127.0.0.1:5080
+          export ConnectionStrings__DefaultConnection="Data Source=$RUNNER_TEMP/transportation-exceptions-smoke.db"
+
+          api_log="$RUNNER_TEMP/transportation-api.log"
+          health_body="$RUNNER_TEMP/health-response.txt"
+          openapi_body="$RUNNER_TEMP/openapi.json"
+          rm -f "$RUNNER_TEMP/transportation-exceptions-smoke.db" \
+            "$RUNNER_TEMP/transportation-exceptions-smoke.db-shm" \
+            "$RUNNER_TEMP/transportation-exceptions-smoke.db-wal"
+
+          (
+            cd src/TransportationExceptionManagement.Api/bin/Release/net10.0
+            exec dotnet TransportationExceptionManagement.Api.dll
+          ) >"$api_log" 2>&1 &
+          api_pid=$!
+
+          cleanup() {
+            if kill -0 "$api_pid" 2>/dev/null; then
+              kill "$api_pid" 2>/dev/null || true
+              for _ in {1..10}; do
+                if ! kill -0 "$api_pid" 2>/dev/null; then
+                  break
+                fi
+                sleep 1
+              done
+              if kill -0 "$api_pid" 2>/dev/null; then
+                kill -KILL "$api_pid" 2>/dev/null || true
+              fi
+            fi
+            wait "$api_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          started=false
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error --max-time 2 \
+              http://127.0.0.1:5080/health \
+              --output "$health_body"; then
+              started=true
+              break
+            fi
+
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              echo "The API process exited before becoming healthy."
+              cat "$api_log"
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          if [[ "$started" != "true" ]]; then
+            echo "The API did not become healthy within the bounded retry window."
+            cat "$api_log"
+            exit 1
+          fi
+
+          curl --fail --silent --show-error --max-time 10 \
+            http://127.0.0.1:5080/swagger/v1/swagger.json \
+            --output "$openapi_body"
+
+          test -s "$health_body"
+          test -s "$openapi_body"
+          grep --quiet '"openapi"' "$openapi_body"
+
+          echo "Health response: $(cat "$health_body")"
+          echo "OpenAPI smoke test passed."
