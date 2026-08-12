@@ -29,7 +29,7 @@ The service answers questions such as:
 - Export deterministically ordered, correctly escaped CSV data.
 - Apply a committed EF Core migration to SQLite and seed exactly 36 deterministic cases into an empty database.
 - Publish readable JSON enums, standard `ProblemDetails`, health status, Swagger UI, and OpenAPI JSON.
-- Exercise the real HTTP pipeline and SQLite behaviour through xUnit integration tests.
+- Exercise the real HTTP pipeline and SQLite behaviour through 36 xUnit integration tests.
 
 ## Architecture
 
@@ -192,11 +192,21 @@ dotnet list TransportationExceptionManagement.sln package --vulnerable --include
 
 Tests verify observable behaviour rather than scaffold construction: health, seeded listing, pagination/filtering, detail/404 responses, validation, creation, assignment, lifecycle conflicts, notes, reports, CSV, and migration-backed persistence.
 
+The validated suite contains **36 integration tests**: 36 passed, 0 failed, and 0 skipped on the documented Windows baseline.
+
 ## CI
 
 The `CI` GitHub Actions workflow runs on pull requests and pushes to `main`. It restores dependencies, verifies formatting, builds in Release, executes the test suite, and launches the built API against a temporary SQLite file. A bounded retry loop requires successful `/health` and `/swagger/v1/swagger.json` responses and always stops the background process.
 
 The badge reflects GitHub's latest workflow result; this README does not substitute a claimed result for the actual run log.
+
+## Project Deep Dive
+
+For the actual architecture, workflow rules, complete endpoint validation, SQLite evidence, Swagger screenshots, representative implementation excerpts, testing strategy, CI review, and explicit limitations:
+
+- [Read the complete Project Walkthrough](docs/PROJECT_WALKTHROUGH.md)
+- [Download the Technical Case Study (PDF)](docs/Transportation_Exception_Management_API_Case_Study.pdf)
+- [Download the editable Technical Case Study (DOCX)](docs/Transportation_Exception_Management_API_Case_Study.docx)
 
 ## Swagger and OpenAPI
 
